@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Electricity Data Visualization</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Control Panel -->
+        <div id="controls">
+            <h1>Global Electricity Data</h1>
+            <div class="control-group">
+                <label for="indicator-select">Indicator:</label>
+                <select id="indicator-select">
+                    <option value="generation">Total Generation</option>
+                    <option value="consumption">Final Consumption</option>
+                    <option value="imports">Net Imports</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="year-select">Year:</label>
+                <select id="year-select"></select>
+            </div>
+            <div class="control-group" id="source-control">
+                <label for="source-select">Generation Source:</label>
+                <select id="source-select">
+                    <option value="total">Total</option>
+                    <option value="Coal">Coal</option>
+                    <option value="Oil">Oil</option>
+                    <option value="Natural gas">Natural Gas</option>
+                    <option value="Nuclear">Nuclear</option>
+                    <option value="Hydropower">Hydropower</option>
+                    <option value="Wind">Wind</option>
+                    <option value="Solar PV">Solar PV</option>
+                    <option value="Biofuels">Biofuels</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Globe Container -->
+        <div id="globe-container"></div>
+
+        <!-- Side Panel -->
+        <div id="side-panel" class="hidden">
+            <button id="close-panel">&times;</button>
+            <div id="panel-content">
+                <h2 id="country-name"></h2>
+                <div id="charts">
+                    <div class="chart-container">
+                        <h3>Electricity Generation by Source</h3>
+                        <canvas id="generation-chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Imports vs Exports</h3>
+                        <canvas id="trade-chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Final Consumption by Sector</h3>
+                        <canvas id="consumption-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+    </div>
+
+    <!-- Libraries -->
+    <script src="https://unpkg.com/three@0.150.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three-globe@2.27.0/dist/three-globe.min.js"></script>
+    <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Application Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+
+data/iea_scraped/
+data/final_consumption_scraped/
+data/final_consumption_scraped/botswana_final_consumption.csv
+data/International Energy Agency - Canada .csv
+data/International Energy Agency - electricity final consumption by sector in Chinese Taipei.csv
+data/International Energy Agency - electricity generation sources in Canada.csv
+data/International Energy Agency - emissions from power generation by source in Canada.csv
+data/access-to-electricity-vs-gdp-per-capita/
