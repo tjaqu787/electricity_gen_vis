@@ -18,7 +18,6 @@ Interactive 3D globe visualization of global electricity data from IEA.
 ### Option 1: Simple HTTP Server (Python)
 
 ```bash
-cd visualization
 python3 -m http.server 8000
 ```
 
@@ -27,7 +26,6 @@ Then open: http://localhost:8000
 ### Option 2: Node.js HTTP Server
 
 ```bash
-cd visualization
 npx http-server -p 8000
 ```
 
@@ -36,6 +34,24 @@ npx http-server -p 8000
 1. Install "Live Server" extension in VS Code
 2. Right-click on `index.html`
 3. Select "Open with Live Server"
+
+### Option 4: GitHub Pages
+
+This project is configured for GitHub Pages - simply enable it in your repository settings and the visualization will be available at:
+`https://[your-username].github.io/[repo-name]/`
+
+## Project Structure
+
+```
+.
+├── index.html              # Main visualization page
+├── styles.css              # Styling
+├── js/                     # JavaScript files
+└── data/                   # Data files and processing scripts
+    ├── *.json             # Visualization data
+    ├── *.py               # Python data processing scripts
+    └── iea_electricity.db # SQLite database
+```
 
 ## Data
 
