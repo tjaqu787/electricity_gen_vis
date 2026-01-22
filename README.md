@@ -2,6 +2,8 @@
 
 Interactive 3D globe visualization of global electricity data from IEA.
 
+**[View Live Visualization](https://tjaqu787.github.io/electricity_gen_vis/)**
+
 ## Features
 
 - **3D Interactive Globe** with country heatmap
@@ -37,8 +39,7 @@ npx http-server -p 8000
 
 ### Option 4: GitHub Pages
 
-This project is configured for GitHub Pages - simply enable it in your repository settings and the visualization will be available at:
-`https://[your-username].github.io/[repo-name]/`
+View the live deployment at: https://tjaqu787.github.io/electricity_gen_vis/
 
 ## Project Structure
 
