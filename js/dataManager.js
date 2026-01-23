@@ -32,21 +32,33 @@ export class DataManager {
         return this.countries[countryCode] || countryCode.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
-    getHeatmapData(indicator, year, source = 'total') {
+    getHeatmapData(indicator, year, source = 'total', valueType = 'absolute', baseYear = null) {
         const data = [];
 
         for (const countryCode in this.countries) {
             let value = null;
+            let baseValue = null;
 
             if (indicator === 'generation') {
                 const countryData = this.generation[countryCode];
                 if (countryData && countryData[year]) {
-                    if (source === 'total') {
+                    if (valueType === 'share' && source !== 'total') {
+                        // Calculate share: (source / total) * 100
+                        const sourceValue = countryData[year][source] || 0;
+                        const totalValue = Object.values(countryData[year]).reduce((sum, val) => sum + (val || 0), 0);
+                        value = totalValue > 0 ? (sourceValue / totalValue) * 100 : null;
+                    } else if (source === 'total') {
                         // Sum all sources
                         value = Object.values(countryData[year]).reduce((sum, val) => sum + (val || 0), 0);
+                        if (valueType === 'indexed' && baseYear && countryData[baseYear]) {
+                            baseValue = Object.values(countryData[baseYear]).reduce((sum, val) => sum + (val || 0), 0);
+                        }
                     } else {
                         // Specific source
                         value = countryData[year][source] || null;
+                        if (valueType === 'indexed' && baseYear && countryData[baseYear]) {
+                            baseValue = countryData[baseYear][source] || null;
+                        }
                     }
                 }
             } else if (indicator === 'consumption') {
@@ -54,6 +66,9 @@ export class DataManager {
                 if (countryData && countryData[year]) {
                     // Sum all sectors
                     value = Object.values(countryData[year]).reduce((sum, val) => sum + (val || 0), 0);
+                    if (valueType === 'indexed' && baseYear && countryData[baseYear]) {
+                        baseValue = Object.values(countryData[baseYear]).reduce((sum, val) => sum + (val || 0), 0);
+                    }
                 }
             } else if (indicator === 'imports') {
                 const countryData = this.trade[countryCode];
@@ -61,7 +76,18 @@ export class DataManager {
                     const imports = countryData[year]['Imports'] || 0;
                     const exports = Math.abs(countryData[year]['Exports'] || 0);
                     value = imports - exports; // Net imports
+
+                    if (valueType === 'indexed' && baseYear && countryData[baseYear]) {
+                        const baseImports = countryData[baseYear]['Imports'] || 0;
+                        const baseExports = Math.abs(countryData[baseYear]['Exports'] || 0);
+                        baseValue = baseImports - baseExports;
+                    }
                 }
+            }
+
+            // Calculate indexed value if requested
+            if (valueType === 'indexed' && baseValue !== null && baseValue !== 0) {
+                value = (value / baseValue) * 100;
             }
 
             if (value !== null && value !== 0) {

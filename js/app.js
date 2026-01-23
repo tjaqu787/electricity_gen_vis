@@ -12,6 +12,8 @@ class App {
         this.currentIndicator = 'generation';
         this.currentYear = 2023;
         this.currentSource = 'total';
+        this.valueType = 'absolute';
+        this.baseYear = 2000;
         this.selectedCountry = null;
 
         this.init();
@@ -55,16 +57,26 @@ class App {
     }
 
     setupControls() {
-        // Populate year dropdown
-        const yearSelect = document.getElementById('year-select');
+        // Setup year slider
+        const yearSlider = document.getElementById('year-slider');
+        const yearValue = document.getElementById('year-value');
         const years = this.dataManager.getYears();
-        years.forEach(year => {
-            const option = document.createElement('option');
-            option.value = year;
-            option.textContent = year;
-            if (year === this.currentYear) option.selected = true;
-            yearSelect.appendChild(option);
-        });
+
+        // Set slider range
+        const minYear = Math.min(...years);
+        const maxYear = Math.max(...years);
+        yearSlider.min = minYear;
+        yearSlider.max = maxYear;
+        yearSlider.value = this.currentYear;
+        yearValue.textContent = this.currentYear;
+
+        // Setup base year slider
+        const baseYearSlider = document.getElementById('base-year-slider');
+        const baseYearValue = document.getElementById('base-year-value');
+        baseYearSlider.min = minYear;
+        baseYearSlider.max = maxYear;
+        baseYearSlider.value = this.baseYear;
+        baseYearValue.textContent = this.baseYear;
 
         // Indicator change
         document.getElementById('indicator-select').addEventListener('change', (e) => {
@@ -81,9 +93,46 @@ class App {
             this.updateVisualization();
         });
 
-        // Year change
-        yearSelect.addEventListener('change', (e) => {
+        // Value type change
+        document.getElementById('value-type-select').addEventListener('change', (e) => {
+            this.valueType = e.target.value;
+
+            // Show/hide base year selector based on value type
+            const baseYearControl = document.getElementById('base-year-control');
+            const sourceControl = document.getElementById('source-control');
+
+            if (this.valueType === 'indexed') {
+                baseYearControl.style.display = 'block';
+            } else {
+                baseYearControl.style.display = 'none';
+            }
+
+            // Show/hide source selector based on value type and indicator
+            if (this.valueType === 'share' && this.currentIndicator === 'generation') {
+                sourceControl.style.display = 'block';
+                // If 'total' is selected, switch to a specific source
+                if (this.currentSource === 'total') {
+                    this.currentSource = 'Coal';
+                    document.getElementById('source-select').value = 'Coal';
+                }
+            } else if (this.currentIndicator === 'generation') {
+                sourceControl.style.display = 'block';
+            }
+
+            this.updateVisualization();
+        });
+
+        // Base year slider change
+        baseYearSlider.addEventListener('input', (e) => {
+            this.baseYear = parseInt(e.target.value);
+            baseYearValue.textContent = this.baseYear;
+            this.updateVisualization();
+        });
+
+        // Year slider change
+        yearSlider.addEventListener('input', (e) => {
             this.currentYear = parseInt(e.target.value);
+            yearValue.textContent = this.currentYear;
             this.updateVisualization();
             if (this.selectedCountry) {
                 this.showCountryPanel(this.selectedCountry);
@@ -111,7 +160,9 @@ class App {
         const data = this.dataManager.getHeatmapData(
             this.currentIndicator,
             this.currentYear,
-            this.currentSource
+            this.currentSource,
+            this.valueType,
+            this.valueType === 'indexed' ? this.baseYear : null
         );
 
         this.globeViz.updateHeatmap(data);

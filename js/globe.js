@@ -38,37 +38,56 @@ export class GlobeViz {
         camera.updateProjectionMatrix();
         camera.position.z = 500;
 
-        // Handle window resize
+        // Handle window resize with debounce
+        let resizeTimeout;
         window.addEventListener('resize', () => {
-            camera.aspect = this.container.clientWidth / this.container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const width = this.container.clientWidth;
+                const height = this.container.clientHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            }, 100);
         });
 
-        // Mouse controls
-        let isDragging = false;
+        // Mouse controls - improved handling
+        this.isDragging = false;
+        let dragStarted = false;
         let previousMousePosition = { x: 0, y: 0 };
 
-        renderer.domElement.addEventListener('mousedown', (e) => {
-            isDragging = true;
+        const handleMouseDown = (e) => {
+            dragStarted = true;
+            this.isDragging = false;
             previousMousePosition = { x: e.clientX, y: e.clientY };
-        });
+        };
 
-        renderer.domElement.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                const deltaX = e.clientX - previousMousePosition.x;
-                const deltaY = e.clientY - previousMousePosition.y;
+        const handleMouseMove = (e) => {
+            if (!dragStarted) return;
 
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            if (distance > 3) {
+                this.isDragging = true;
                 this.globe.rotation.y += deltaX * 0.005;
                 this.globe.rotation.x += deltaY * 0.005;
-
-                previousMousePosition = { x: e.clientX, y: e.clientY };
+                // Clamp x rotation to prevent flipping
+                this.globe.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.globe.rotation.x));
             }
-        });
 
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        };
+
+        const handleMouseUp = () => {
+            dragStarted = false;
+            setTimeout(() => { this.isDragging = false; }, 10);
+        };
+
+        renderer.domElement.addEventListener('mousedown', handleMouseDown);
+        renderer.domElement.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
 
         // Zoom with mouse wheel
         renderer.domElement.addEventListener('wheel', (e) => {
@@ -117,24 +136,9 @@ export class GlobeViz {
             // Set up click handler using raycaster
             const raycaster = new THREE.Raycaster();
             const mouse = new THREE.Vector2();
-            let isDragging = false;
-            let mouseDownPos = { x: 0, y: 0 };
-
-            this.renderer.domElement.addEventListener('mousedown', (e) => {
-                mouseDownPos = { x: e.clientX, y: e.clientY };
-                isDragging = false;
-            });
-
-            this.renderer.domElement.addEventListener('mousemove', (e) => {
-                const distance = Math.sqrt(
-                    Math.pow(e.clientX - mouseDownPos.x, 2) +
-                    Math.pow(e.clientY - mouseDownPos.y, 2)
-                );
-                if (distance > 5) isDragging = true;
-            });
 
             this.renderer.domElement.addEventListener('click', (e) => {
-                if (isDragging) return;
+                if (this.isDragging) return;
 
                 mouse.x = (e.clientX / this.renderer.domElement.clientWidth) * 2 - 1;
                 mouse.y = -(e.clientY / this.renderer.domElement.clientHeight) * 2 + 1;
@@ -179,10 +183,33 @@ export class GlobeViz {
 
     highlightCountry(country) {
         // Update polygon colors to highlight the selected country
-        this.selectedCountry = country;
-        this.globe.polygonCapColor(d =>
-            d === country ? 'rgba(255, 200, 0, 0.7)' : 'rgba(0, 100, 200, 0.15)'
-        );
+        const selectedCountryCode = this.mapCountryNameToCode(country.properties.name);
+        this.selectedCountry = selectedCountryCode;
+
+        // Reapply heatmap colors but with highlight for selected country
+        this.globe.polygonCapColor(feature => {
+            const countryName = feature.properties.name;
+            const countryCode = this.mapCountryNameToCode(countryName);
+            const value = this.currentValueMap ? this.currentValueMap[countryCode] : undefined;
+
+            if (countryCode === selectedCountryCode) {
+                // Highlight selected country with yellow border/glow
+                return value !== undefined ? this.currentColorMap[countryCode] : 'rgba(255, 200, 0, 0.9)';
+            }
+
+            if (value !== undefined && this.currentColorMap) {
+                return this.currentColorMap[countryCode];
+            }
+
+            // Default color for countries with no data
+            return 'rgba(50, 50, 50, 0.3)';
+        });
+
+        // Add stroke highlight for selected country
+        this.globe.polygonStrokeColor(d => {
+            const countryCode = this.mapCountryNameToCode(d.properties.name);
+            return countryCode === selectedCountryCode ? '#FFD700' : '#4fc3f7';
+        });
     }
 
     findCountryAtPoint(lat, lng) {
@@ -283,12 +310,57 @@ export class GlobeViz {
     }
 
     updateHeatmap(data) {
-        // For now, just log the data
-        // Full implementation would require country polygon data and proper mapping
         console.log('Heatmap data updated:', data.length, 'countries');
 
-        // You could implement hexBin polygons or polygons here
-        // See three-globe documentation for examples
+        // Create a map of country code to value for quick lookup
+        const valueMap = {};
+        const colorMap = {};
+        let maxValue = 0;
+        let minValue = Infinity;
+
+        data.forEach(d => {
+            valueMap[d.country] = d.value;
+            maxValue = Math.max(maxValue, d.value);
+            minValue = Math.min(minValue, d.value);
+        });
+
+        console.log('Value range:', minValue, 'to', maxValue);
+
+        // Pre-calculate colors for all countries
+        data.forEach(d => {
+            const normalized = (d.value - minValue) / (maxValue - minValue || 1);
+            const r = Math.round(normalized * 255);
+            const g = Math.round((1 - normalized) * 100);
+            const b = Math.round((1 - normalized) * 255);
+            colorMap[d.country] = `rgba(${r}, ${g}, ${b}, 0.8)`;
+        });
+
+        // Store for use in highlightCountry
+        this.currentValueMap = valueMap;
+        this.currentColorMap = colorMap;
+
+        // Update polygon colors based on data
+        this.globe.polygonCapColor(feature => {
+            const countryName = feature.properties.name;
+            const countryCode = this.mapCountryNameToCode(countryName);
+            const value = valueMap[countryCode];
+
+            if (value !== undefined) {
+                return colorMap[countryCode];
+            }
+
+            // Default color for countries with no data
+            return 'rgba(50, 50, 50, 0.3)';
+        });
+
+        this.globe.polygonSideColor(() => 'rgba(0, 0, 0, 0.1)');
+        this.globe.polygonStrokeColor(() => '#4fc3f7');
+        this.globe.polygonAltitude(d => {
+            const countryName = d.properties.name;
+            const countryCode = this.mapCountryNameToCode(countryName);
+            const value = valueMap[countryCode];
+            return value !== undefined ? 0.01 : 0.005;
+        });
     }
 
     onCountryClick(callback) {
